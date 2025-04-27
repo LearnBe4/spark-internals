@@ -1,0 +1,83 @@
+services:
+  spark-master:
+    container_name: spark-master
+    build: .
+    image: spark-image
+    command: master
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080" ]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    volumes:
+      - ./spark_data:/opt/spark/data
+      - ./spark_apps:/opt/spark/apps
+      - spark-logs:/opt/spark/spark-events
+    env_file:
+      - .env.spark
+    ports:
+      - '8088:8080'
+      - '7077:7077'
+
+  spark-history-server:
+    container_name: spark-history
+    image: spark-image
+    command: history
+    depends_on:
+      - spark-master
+    env_file:
+      - .env.spark
+    volumes:
+      - spark-logs:/opt/spark/spark-events
+    ports:
+      - '18080:18080'
+
+  spark-worker:
+#    container_name: spark-worker
+    image: spark-image
+    command: worker
+    restart: unless-stopped
+    depends_on:
+      - spark-master
+    env_file:
+      - .env.spark
+    volumes:
+      - ./spark_data:/opt/spark/data
+      - ./spark_apps:/opt/spark/apps
+      - spark-logs:/opt/spark/spark-events
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '3'
+
+  jupyter_lab:
+    container_name: jupyter_lab
+    build:
+      context: .
+      dockerfile: Dockerfile.jupyterlab
+    image: jupyter_lab
+    restart: unless-stopped
+    depends_on:
+      - spark-master
+    ports:
+      - "8888:8888"
+      - "8889:8889"
+      - "4040:4040"
+    volumes:
+      - ./notebooks:/opt/notebooks
+      - ./spark_data:/opt/spark/data
+      - ./spark_apps:/opt/spark/apps
+      - spark-logs:/opt/spark/spark-events
+    environment:
+      - SPARK_MASTER_HOST=spark-master
+      - JUPYTER_TOKEN=jupyter
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '2'
+
+
+volumes:
+  spark-logs:

@@ -1,0 +1,25 @@
+# Dockerfile for JupyterLab with Spark Configuration
+
+FROM spark-image
+
+# Install Jupyter and related components
+RUN pip install --no-cache-dir jupyterlab==3.5.0 \
+    && pip install findspark \
+    && pip install delta-spark==3.2.0 \
+    && pip install boto3
+
+# Create the necessary directory structure for the initialization script
+RUN mkdir -p /root/.ipython/profile_default/startup
+
+# Ensure findspark library is used for easy Spark initialization
+RUN echo "import findspark; findspark.init()" >> /root/.ipython/profile_default/startup/00-init-find-spark.py
+
+# Set up environment variables for JupyterLab
+ENV JUPYTER_PORT="8888"
+ENV JUPYTER_TOKEN=""
+
+# Copy the customized entrypoint script if needed
+COPY entrypoint-jupyter.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/entrypoint-jupyter.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint-jupyter.sh"]
