@@ -1,25 +1,20 @@
 [project]
-name = "sparkwithjupyternb"
+name = "spark-internals"
 version = "0.1.0"
-description = ""
+description = "Project to understand the internals of Spark"
+
 authors = [
     {name = "Rajesh Kumar",email = "rajesh.kumar@learnbe4.in"}
 ]
-readme = "README.md"
+
 requires-python = ">=3.12"
+readme = "README.md"
+
 dependencies = [
+  "pandas>=1.5.2",
+  "pyarrow>=14.0.1",
+  "pyspark>=3.5.0",
+  "delta-spark>=2.2.0",
+  "pytest==7.3.2",
+  "numpy>=1.24.0"
 ]
-
-[tool.poetry.dependencies]
-python = "^3.12.3"
-pandas = "^1.5.2"
-pyarrow = "^14.0.1"
-pyspark = "^3.5.0"
-delta-spark = ">=2.2.0"
-pytest = "7.3.2"
-numpy = "^1.24.0"
-
-
-[build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"

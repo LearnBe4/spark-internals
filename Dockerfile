@@ -2,8 +2,6 @@ FROM python:3.12-bullseye AS spark-base
 
 ARG SPARK_VERSION=3.5.0
 
-# Update PIP
-RUN pip install --upgrade pip
 # Install tools required by the OS
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -19,9 +17,6 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Set JAVA_HOME environment variable
-#ENV JAVA_HOME="/usr/bin/jvm/java-11-openjdk-amd64"
-
 # Setup the directories for our Spark and Hadoop installations
 ENV SPARK_HOME=/opt/spark
 ENV HADOOP_HOME=/opt/hadoop
@@ -34,23 +29,16 @@ RUN curl https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SP
  && tar xvzf spark-${SPARK_VERSION}-bin-hadoop3.tgz --directory /opt/spark --strip-components 1 \
  && rm -rf spark-${SPARK_VERSION}-bin-hadoop3.tgz
 
-#Install Hadoop AWS jars, Uncomment if you need to read AWS S3 buckets using spark
-#RUN wget https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar -P $SPARK_HOME/jars/
-#RUN wget https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.11.1026/aws-java-sdk-bundle-1.11.1026.jar -P $SPARK_HOME/jars/
-
 FROM spark-base AS pyspark
 
-ENV VIRTUAL_ENV=/opt/venv
-RUN python3 -m venv $VIRTUAL_ENV --copies
-RUN cp -r /usr/local/lib/python3.12/* $VIRTUAL_ENV/lib/python3.12/
-
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+# Set up the virtual environment using uv
+COPY --from=ghcr.io/astral-sh/uv:0.7.1 /uv /uvx /bin/
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
 
 # Install python deps
-RUN pip install --no-cache-dir poetry
-COPY pyproject.toml poetry.lock ./
-RUN poetry config virtualenvs.create false \
-    && poetry install --no-interaction --no-ansi --no-root
+COPY pyproject.toml uv.lock ./
+RUN uv sync --no-install-project
 
 # Copy logging configuration
 COPY conf/log4j.properties "$SPARK_HOME/conf"
@@ -73,8 +61,6 @@ RUN chmod u+x /opt/spark/sbin/* && \
 
 # Create and set permissions for notebook directory
 RUN mkdir -p /opt/notebooks && chmod 777 /opt/notebooks
-
-RUN chown -R root:root /opt/venv/lib/python3.12/
 
 # Set working directory to ${SPARK_HOME}/python
 WORKDIR ${SPARK_HOME}/python
